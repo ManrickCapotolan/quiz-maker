@@ -8,79 +8,62 @@ import type {
   QuizWithoutAnswers,
   SubmitAttemptResponse,
 } from "@/api/types"
-import { useLogAnswer, useSubmitAttempt } from "@/hooks/useAttempt"
+import { useMutation } from "@tanstack/react-query"
+import { attemptService } from "@/api/services/attempt"
 import { logAttemptEvent } from "@/api/services/attemptEvent"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Attempt() {
   const { attemptId } = useParams<{ attemptId: string }>()
   const navigate = useNavigate()
+
   const [quiz, setQuiz] = useState<QuizWithoutAnswers | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [results, setResults] = useState<SubmitAttemptResponse | null>(null)
-  const logAnswer = useLogAnswer()
-  const submitAttempt = useSubmitAttempt()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Load attempt data on mount
+  // Mutations defined locally
+  const logAnswer = useMutation({
+    mutationFn: async ({ attemptId, questionId, value }: { attemptId: string; questionId: string; value: string }) =>
+      attemptService.logAnswer(Number(attemptId), { questionId: Number(questionId), value }),
+  })
+
+  const submitAttempt = useMutation({
+    mutationFn: async ({ attemptId }: { attemptId: string }) => attemptService.submitAttempt(Number(attemptId)),
+  })
+
+  // Load attempt data on mount via API
   useEffect(() => {
-    if (!attemptId) {
-      setError("Invalid attempt ID")
-      setLoading(false)
-      return
-    }
-
-    // Get attempt data from localStorage
-    const STORAGE_ATTEMPTS_KEY = "quiz-maker-attempts"
-    const STORAGE_QUIZZES_KEY = "quiz-maker-quizzes"
-    const STORAGE_QUESTIONS_KEY = "quiz-maker-questions"
-
-    try {
-      const storedAttempts = JSON.parse(localStorage.getItem(STORAGE_ATTEMPTS_KEY) || "{}")
-      const attempt = storedAttempts[attemptId]
-
-      if (!attempt || !attempt.quizId) {
-        setError("Attempt not found")
+    const load = async () => {
+      if (!attemptId) {
+        setError("Invalid attempt ID")
         setLoading(false)
         return
       }
 
-      const storedQuizzes = JSON.parse(localStorage.getItem(STORAGE_QUIZZES_KEY) || "{}")
-      const storedQuestions = JSON.parse(localStorage.getItem(STORAGE_QUESTIONS_KEY) || "{}")
-      const quizData = storedQuizzes[attempt.quizId]
-      const questions = storedQuestions[attempt.quizId] || []
+      try {
+        const data = await attemptService.getAttempt(Number(attemptId))
+        // Expecting shape: { quiz: QuizWithoutAnswers, answers?: Record<string,string> }
+        const apiQuiz = (data.quiz || data) as QuizWithoutAnswers
+        if (!apiQuiz || !apiQuiz.questions || apiQuiz.questions.length === 0) {
+          setError("Quiz data not found")
+          setLoading(false)
+          return
+        }
 
-      if (!quizData || questions.length === 0) {
-        setError("Quiz data not found")
+        setQuiz(apiQuiz)
+        setAnswers((data.answers as Record<string, string>) || {})
+      } catch (err: any) {
+        setError(err?.response?.data?.error || "Error loading attempt")
+      } finally {
         setLoading(false)
-        return
       }
-
-      // Remove correct answers
-      const questionsWithoutAnswers = questions.map((q: any) => {
-        const { correctAnswer, ...questionWithoutAnswer } = q
-        return questionWithoutAnswer
-      })
-
-      setQuiz({
-        id: attempt.quizId,
-        title: quizData.title,
-        description: quizData.description,
-        timeLimit: quizData.timeLimit,
-        questions: questionsWithoutAnswers,
-      })
-
-      // Load existing answers
-      setAnswers(attempt.answers || {})
-    } catch (err) {
-      setError("Error loading attempt")
-      console.error("Error loading attempt:", err)
-    } finally {
-      setLoading(false)
     }
+
+    load()
   }, [attemptId])
 
   const questions = quiz?.questions || []
@@ -115,7 +98,7 @@ export default function Attempt() {
     const newAnswers = { ...answers, [currentQuestion.id]: value }
     setAnswers(newAnswers)
 
-    // Log answer to API
+    // Log answer via API
     logAnswer.mutate({
       attemptId,
       questionId: currentQuestion.id,
@@ -140,7 +123,8 @@ export default function Attempt() {
 
     try {
       const response = await submitAttempt.mutateAsync({ attemptId })
-      setResults(response)
+      // Map backend AttemptResult to SubmitAttemptResponse if needed
+      setResults(response as unknown as SubmitAttemptResponse)
     } catch (error) {
       console.error("Error submitting attempt:", error)
     }

@@ -27,7 +27,7 @@ export default function CreateQuiz() {
       title: "",  
       description: "",
       timeLimitSeconds: 300,
-      isPublished: false,
+      isPublished: true,
     }
   })
 

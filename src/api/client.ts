@@ -7,3 +7,15 @@ export const apiClient = axios.create({
     "Authorization": `Bearer ${import.meta.env.VITE_BASE_API_TOKEN}`
   },
 });
+
+// Simulate network latency globally (1s) for all responses (success and error)
+apiClient.interceptors.response.use(
+  async (response) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    return response
+  },
+  async (error) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    return Promise.reject(error)
+  }
+)
