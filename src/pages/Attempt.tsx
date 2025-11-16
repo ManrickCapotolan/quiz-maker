@@ -1,0 +1,357 @@
+import { useState, useEffect, useRef } from "react"
+import { useParams, useNavigate } from "react-router-dom"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
+import type {
+  QuizWithoutAnswers,
+  SubmitAttemptResponse,
+} from "@/api/types"
+import { useLogAnswer, useSubmitAttempt } from "@/hooks/useAttempt"
+import { logAttemptEvent } from "@/api/services/attemptEvent"
+
+export default function Attempt() {
+  const { attemptId } = useParams<{ attemptId: string }>()
+  const navigate = useNavigate()
+  const [quiz, setQuiz] = useState<QuizWithoutAnswers | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [results, setResults] = useState<SubmitAttemptResponse | null>(null)
+  const logAnswer = useLogAnswer()
+  const submitAttempt = useSubmitAttempt()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Load attempt data on mount
+  useEffect(() => {
+    if (!attemptId) {
+      setError("Invalid attempt ID")
+      setLoading(false)
+      return
+    }
+
+    // Get attempt data from localStorage
+    const STORAGE_ATTEMPTS_KEY = "quiz-maker-attempts"
+    const STORAGE_QUIZZES_KEY = "quiz-maker-quizzes"
+    const STORAGE_QUESTIONS_KEY = "quiz-maker-questions"
+
+    try {
+      const storedAttempts = JSON.parse(localStorage.getItem(STORAGE_ATTEMPTS_KEY) || "{}")
+      const attempt = storedAttempts[attemptId]
+
+      if (!attempt || !attempt.quizId) {
+        setError("Attempt not found")
+        setLoading(false)
+        return
+      }
+
+      const storedQuizzes = JSON.parse(localStorage.getItem(STORAGE_QUIZZES_KEY) || "{}")
+      const storedQuestions = JSON.parse(localStorage.getItem(STORAGE_QUESTIONS_KEY) || "{}")
+      const quizData = storedQuizzes[attempt.quizId]
+      const questions = storedQuestions[attempt.quizId] || []
+
+      if (!quizData || questions.length === 0) {
+        setError("Quiz data not found")
+        setLoading(false)
+        return
+      }
+
+      // Remove correct answers
+      const questionsWithoutAnswers = questions.map((q: any) => {
+        const { correctAnswer, ...questionWithoutAnswer } = q
+        return questionWithoutAnswer
+      })
+
+      setQuiz({
+        id: attempt.quizId,
+        title: quizData.title,
+        description: quizData.description,
+        timeLimit: quizData.timeLimit,
+        questions: questionsWithoutAnswers,
+      })
+
+      // Load existing answers
+      setAnswers(attempt.answers || {})
+    } catch (err) {
+      setError("Error loading attempt")
+      console.error("Error loading attempt:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [attemptId])
+
+  const questions = quiz?.questions || []
+  const currentQuestion = questions[currentStep]
+  const isLastQuestion = currentStep === questions.length - 1
+  const isFirstQuestion = currentStep === 0
+  const isCompleted = results !== null
+
+  // Set up window blur event listener to detect when user tabs out
+  useEffect(() => {
+    if (!attemptId || !currentQuestion || isCompleted) return
+
+    const handleBlur = () => {
+      logAttemptEvent({
+        attemptId,
+        questionId: currentQuestion.id,
+        eventType: "blur",
+        timestamp: new Date().toISOString(),
+      })
+    }
+
+    window.addEventListener("blur", handleBlur)
+
+    return () => {
+      window.removeEventListener("blur", handleBlur)
+    }
+  }, [attemptId, currentQuestion, isCompleted])
+
+  const handleAnswerChange = (value: string) => {
+    if (!attemptId || !currentQuestion) return
+
+    const newAnswers = { ...answers, [currentQuestion.id]: value }
+    setAnswers(newAnswers)
+
+    // Log answer to API
+    logAnswer.mutate({
+      attemptId,
+      questionId: currentQuestion.id,
+      value,
+    })
+  }
+
+  const handleNext = () => {
+    if (currentStep < questions.length - 1) {
+      setCurrentStep(currentStep + 1)
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!attemptId) return
+
+    try {
+      const response = await submitAttempt.mutateAsync({ attemptId })
+      setResults(response)
+    } catch (error) {
+      console.error("Error submitting attempt:", error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading quiz...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !quiz) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error || "Quiz not found"}</p>
+          <Button onClick={() => navigate("/")}>Go Home</Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-3xl rounded-lg border border-border bg-card p-8 shadow-lg">
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/")}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Home
+          </Button>
+          <h1 className="text-2xl font-bold text-card-foreground">{quiz.title}</h1>
+          {quiz.description && (
+            <p className="mt-2 text-muted-foreground">{quiz.description}</p>
+          )}
+        </div>
+
+        {isCompleted && results ? (
+          <div className="space-y-6">
+            <div className="text-center py-4">
+              <h3 className="text-2xl font-bold text-card-foreground mb-2">
+                Quiz Completed!
+              </h3>
+              <p className="text-lg text-muted-foreground">
+                Score: {results.score} / {results.totalQuestions}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {Math.round((results.score / results.totalQuestions) * 100)}%
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-semibold text-card-foreground">Results:</h4>
+              {results.results.map((result, index) => (
+                <div
+                  key={result.questionId}
+                  className="rounded-lg border border-border p-4 space-y-2"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Q{index + 1}
+                        </span>
+                        {result.isCorrect ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500" />
+                        )}
+                      </div>
+                      <p className="font-medium text-card-foreground">{result.question}</p>
+                      <div className="mt-2 space-y-1 text-sm">
+                        <div>
+                          <span className="font-medium text-muted-foreground">
+                            Your Answer:{" "}
+                          </span>
+                          <span
+                            className={
+                              result.isCorrect ? "text-green-600" : "text-red-600"
+                            }
+                          >
+                            {result.userAnswer}
+                          </span>
+                        </div>
+                        {!result.isCorrect && (
+                          <div>
+                            <span className="font-medium text-muted-foreground">
+                              Correct Answer:{" "}
+                            </span>
+                            <span className="text-green-600">{result.correctAnswer}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button onClick={() => navigate("/")}>Back to Home</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Progress indicator */}
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Question {currentStep + 1} of {questions.length}
+              </span>
+              <span>
+                {Object.keys(answers).length} / {questions.length} answered
+              </span>
+            </div>
+
+            {/* Question */}
+            {currentQuestion && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border p-4">
+                  <h3 className="text-lg font-semibold text-card-foreground mb-4">
+                    {currentQuestion.question}
+                  </h3>
+
+                  {currentQuestion.type === "MCQ" && currentQuestion.options ? (
+                    <div className="space-y-2">
+                      {currentQuestion.options.map((option, index) => (
+                        <label
+                          key={index}
+                          className="flex items-center space-x-3 p-3 rounded-md border border-input hover:bg-accent cursor-pointer"
+                        >
+                          <input
+                            type="radio"
+                            name={`question-${currentQuestion.id}`}
+                            value={String(index)}
+                            checked={answers[currentQuestion.id] === String(index)}
+                            onChange={(e) => handleAnswerChange(e.target.value)}
+                            className="h-4 w-4"
+                          />
+                          <span className="flex-1">{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <Field>
+                      <FieldLabel>Your Answer</FieldLabel>
+                      <Input
+                        ref={inputRef}
+                        type="text"
+                        value={answers[currentQuestion.id] || ""}
+                        onChange={(e) => handleAnswerChange(e.target.value)}
+                        onPaste={(e) => {
+                          if (!attemptId || !currentQuestion) return
+                          
+                          const pastedText = e.clipboardData.getData("text")
+                          logAttemptEvent({
+                            attemptId,
+                            questionId: currentQuestion.id,
+                            eventType: "paste",
+                            timestamp: new Date().toISOString(),
+                            value: pastedText,
+                          })
+                        }}
+                        placeholder="Enter your answer"
+                        className="w-full"
+                      />
+                    </Field>
+                  )}
+                </div>
+
+                {/* Navigation buttons */}
+                <div className="flex justify-between pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevious}
+                    disabled={isFirstQuestion}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Previous
+                  </Button>
+
+                  {isLastQuestion ? (
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={
+                        !answers[currentQuestion.id] ||
+                        submitAttempt.isPending ||
+                        Object.keys(answers).length < questions.length
+                      }
+                    >
+                      {submitAttempt.isPending ? "Submitting..." : "Submit Quiz"}
+                    </Button>
+                  ) : (
+                    <Button onClick={handleNext} disabled={!answers[currentQuestion.id]}>
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
