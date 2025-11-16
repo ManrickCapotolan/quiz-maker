@@ -1,10 +1,8 @@
 import * as React from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Field, FieldLabel, FieldError } from "@/components/ui/field"
 import {
   Dialog,
@@ -15,118 +13,116 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Plus, Trash2 } from "lucide-react"
-import type { Question } from "@/api/types"
-
-const questionSchema = z.object({
-  prompt: z.string().min(1, "Prompt is required"),
-  type: z.enum(["MCQ", "text"]),
-  options: z
-    .array(z.string().min(1, "Option cannot be empty"))
-    .optional()
-    .refine(
-      (options) => {
-        if (!options) return true
-        // Check for duplicates (case-insensitive, trimmed)
-        const trimmed = options.map((opt) => opt.trim().toLowerCase())
-        return new Set(trimmed).size === trimmed.length
-      },
-      { message: "Options must be unique" }
-    ),
-  correctAnswer: z.string().min(1, "Correct answer is required"),
-})
-
-type QuestionFormData = z.infer<typeof questionSchema>
+import { QuestionTypeEnum, type Question } from "@/types/question"
+import { type UpsertQuestionSchema, upsertQuestionSchema } from "@/schemas/question.schema"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { quizService } from "@/api/services/quiz"
+import { quizKeys } from "@/lib/queryKeys"
+import { toast } from "sonner"
+import { questionService } from "@/api/services/question"
 
 interface QuestionDialogProps {
   open: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (data: QuestionFormData) => Promise<void>
+  closeDialog: () => void
   question?: Question | null
   quizId: string
 }
 
 export default function QuestionDialog({
   open,
-  onOpenChange,
-  onSubmit,
+  closeDialog,
   question,
+  quizId,
 }: QuestionDialogProps) {
+  const queryClient = useQueryClient();
+
+  console.log('question', question);
   const {
-    register,
     handleSubmit,
     watch,
     setValue,
+    control,
     reset,
-    formState: { errors, isSubmitting },
-  } = useForm<QuestionFormData>({
-    resolver: zodResolver(questionSchema),
+    formState: { errors, isDirty },
+  } = useForm<UpsertQuestionSchema>({
+    resolver: zodResolver(upsertQuestionSchema),
     defaultValues: question
       ? {
-          prompt: question.question,
+          prompt: question.prompt,
           type: question.type,
           options: question.options || [],
-          correctAnswer: question.correctAnswer, // Already a string
+          correctAnswer: question.correctAnswer,
         }
       : {
           prompt: "",
-          type: "MCQ" as const,
+          type: QuestionTypeEnum.MCQ,
           options: ["", ""],
-          correctAnswer: "0", // String from the start
+          correctAnswer: "0",
         },
   })
 
   const questionType = watch("type")
   const options = watch("options") || []
-  const isMCQ = questionType === "MCQ"
+  const isMCQ = questionType === QuestionTypeEnum.MCQ;
 
-  // Reset form when dialog opens/closes or question changes
+  // Reset form values whenever the dialog opens or the target question changes
   React.useEffect(() => {
-    if (open) {
-      if (question) {
-        reset({
-          prompt: question.question,
-          type: question.type,
-          options: question.options || [],
-          correctAnswer: question.correctAnswer, // Already a string
-        })
-      } else {
-        reset({
-          prompt: "",
-          type: "MCQ" as const,
-          options: ["", ""],
-          correctAnswer: "0", // String from the start
-        })
-      }
+    if (!open) return;
+
+    if (question) {
+      reset({
+        prompt: question.prompt,
+        type: question.type,
+        options: question.options || [],
+        correctAnswer: question.correctAnswer,
+      })
+    } else {
+      reset({
+        prompt: "",
+        type: QuestionTypeEnum.MCQ,
+        options: ["", ""],
+        correctAnswer: "0",
+      })
     }
   }, [open, question, reset])
 
-  const handleFormSubmit = async (data: QuestionFormData) => {
-    // Validate MCQ requirements
-    if (data.type === "MCQ") {
-      if (!data.options || data.options.length < 2 || data.options.length > 5) {
-        return
-      }
-      if (data.options.some((opt) => !opt || opt.trim() === "")) {
-        return
-      }
-      // For MCQ, correctAnswer should be a stringified index
-      const correctAnswerIndex = parseInt(data.correctAnswer, 10)
-      if (isNaN(correctAnswerIndex) || correctAnswerIndex < 0 || correctAnswerIndex >= data.options.length) {
-        return
-      }
-    } else {
-      // For text, correctAnswer should be a non-empty string
-      if (data.correctAnswer.trim() === "") {
-        return
-      }
+  React.useEffect(() => {
+    if (isDirty) {
+      setValue("options", isMCQ ? ["", ""] : []);
     }
+  }, [questionType]);
 
-    await onSubmit(data)
-    onOpenChange(false)
+  const upsertQuestionMutation = useMutation({
+    mutationFn: async (data: UpsertQuestionSchema) => {
+      if (question) {
+        return await questionService.updateQuestion(question.id, data)
+      } else {
+        return await quizService.createQuestion(quizId, data)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: quizKeys.detail(quizId) })
+
+      if (question) {
+        toast.success("Question updated successfully")
+      } else {
+        toast.success("Question created successfully")
+      }
+
+      closeDialog();
+    },
+    onError: (error) => {
+      toast.error(`Error creating question: ${error.message}`);
+    },
+  })
+
+  const handleFormSubmit = (data: UpsertQuestionSchema) => {
+    upsertQuestionMutation.mutate(data);
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={closeDialog}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{question ? "Edit Question" : "Add Question"}</DialogTitle>
@@ -138,91 +134,92 @@ export default function QuestionDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          <Field>
-            <FieldLabel htmlFor="prompt">Prompt</FieldLabel>
-            <Textarea
-              id="prompt"
-              {...register("prompt")}
-              placeholder="Enter the question prompt"
-              rows={3}
-              className={errors.prompt ? "border-destructive" : ""}
-            />
-            {errors.prompt && <FieldError>{errors.prompt.message}</FieldError>}
-          </Field>
+          <Controller
+            name="prompt"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="prompt">
+                  Question Prompt
+                </FieldLabel>
+                <Input
+                  {...field}
+                  id="prompt"
+                  aria-invalid={fieldState.invalid}
+                  placeholder="Enter the question prompt"
+                />
+                {fieldState.error && (
+                  <FieldError>{fieldState.error.message}</FieldError>
+                )}
+              </Field>
+            )}
+          />
 
-          <Field>
-            <FieldLabel htmlFor="type">Type</FieldLabel>
-            <select
-              id="type"
-              {...register("type", {
-                onChange: (e) => {
-                  const newType = e.target.value
-                  if (newType === "text") {
-                    // Clear options and reset correctAnswer to empty string
-                    setValue("options", undefined, { shouldValidate: false })
-                    setValue("correctAnswer", "", { shouldValidate: false })
-                  } else {
-                    setValue("options", ["", ""], { shouldValidate: false })
-                    setValue("correctAnswer", "0", { shouldValidate: false })
-                  }
-                },
-              })}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
-            >
-              <option value="MCQ">Multiple Choice (MCQ)</option>
-              <option value="text">Text</option>
-            </select>
-            {errors.type && <FieldError>{errors.type.message}</FieldError>}
-          </Field>
+          <Controller
+            name="type"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="type">
+                  Question Type
+                </FieldLabel>
+                <Select
+                  name={field.name}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger
+                    id="type"
+                    aria-invalid={fieldState.invalid}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="item-aligned">
+                    <SelectItem value={QuestionTypeEnum.MCQ}>Multiple Choice (MCQ)</SelectItem>
+                    <SelectItem value={QuestionTypeEnum.Short}>Text</SelectItem>
+                  </SelectContent>
+                </Select>
+                {fieldState.error && <FieldError>{fieldState.error.message}</FieldError>}
+              </Field>
+            )}  
+          />
 
           {isMCQ && (
             <Field>
-              <FieldLabel>Options (2-5 required, no duplicates)</FieldLabel>
-              <div className="space-y-2">
-                {options.map((_, optionIndex) => {
-                  const optionValue = options[optionIndex] || ""
-                  const trimmedOptions = options.map((opt) => opt.trim().toLowerCase())
-                  const isDuplicate =
-                    optionValue.trim() &&
-                    trimmedOptions.filter((opt) => opt === optionValue.trim().toLowerCase())
-                      .length > 1
-
-                  return (
-                    <div key={optionIndex} className="flex gap-2 items-center">
-                      <div className="flex-1">
-                        <Input
-                          {...register(`options.${optionIndex}` as const)}
-                          placeholder={`Option ${optionIndex + 1}`}
-                          className={isDuplicate ? "border-destructive" : ""}
-                        />
-                        {isDuplicate && (
-                          <p className="text-xs text-destructive mt-1">
-                            This option is a duplicate
-                          </p>
+              <FieldLabel>Options (2-5 required)</FieldLabel>
+              <div className=" space-y-2">
+                {options.map((_, optionIndex) => (
+                  <div key={optionIndex} className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <Controller
+                        name={`options.${optionIndex}` as const}
+                        control={control}
+                        render={({ field }) => (
+                          <Input {...field} placeholder={`Option ${optionIndex + 1}`} />
                         )}
-                      </div>
-                      {options.length > 2 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => {
-                            const newOptions = [...options]
-                            newOptions.splice(optionIndex, 1)
-                            setValue("options", newOptions)
-                            const currentAnswer = watch("correctAnswer")
-                            const currentAnswerIndex = parseInt(currentAnswer, 10)
-                            if (!isNaN(currentAnswerIndex) && currentAnswerIndex >= newOptions.length) {
-                              setValue("correctAnswer", String(Math.max(0, newOptions.length - 1)))
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      />
                     </div>
-                  )
-                })}
+                    {options.length > 2 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => {
+                          const newOptions = [...options]
+                          newOptions.splice(optionIndex, 1)
+                          setValue("options", newOptions)
+                          const currentAnswer = watch("correctAnswer")
+                          const currentAnswerIndex = parseInt(currentAnswer, 10)
+                          if (!isNaN(currentAnswerIndex) && currentAnswerIndex >= newOptions.length) {
+                            setValue("correctAnswer", String(Math.max(0, newOptions.length - 1)))
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
                 {options.length < 5 && (
                   <Button
                     type="button"
@@ -230,7 +227,7 @@ export default function QuestionDialog({
                     size="sm"
                     onClick={() => {
                       const currentOptions = watch("options") || []
-                      setValue("options", [...currentOptions, ""])
+                      setValue("options", [...currentOptions, ""]) 
                     }}
                     className="w-full"
                   >
@@ -242,7 +239,7 @@ export default function QuestionDialog({
               {errors.options && (
                 <FieldError>
                   {typeof errors.options === "object" && "message" in errors.options
-                    ? errors.options.message
+                    ? (errors.options as any).message
                     : "Please check your options"}
                 </FieldError>
               )}
@@ -252,25 +249,38 @@ export default function QuestionDialog({
           <Field>
             <FieldLabel htmlFor="correctAnswer">Correct Answer</FieldLabel>
             {isMCQ ? (
-              <select
-                id="correctAnswer"
-                {...register("correctAnswer")}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
-              >
-                {options.map((option, optIndex) => (
-                  <option key={optIndex} value={String(optIndex)}>
-                    {option.trim() || `Option ${optIndex + 1}`}
-                  </option>
-                ))}
-              </select>
+              <Controller
+                name="correctAnswer"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    id="correctAnswer"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+                    value={field.value}
+                    onChange={field.onChange}
+                  >
+                    {options.map((option, optIndex) => (
+                      <option key={optIndex} value={String(optIndex)}>
+                        {option.trim() || `Option ${optIndex + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
             ) : (
-              <Input
-                key="text-answer" // Force re-render when type changes
-                id="correctAnswer"
-                type="text"
-                {...register("correctAnswer")}
-                placeholder="Enter the correct answer"
-                className={errors.correctAnswer ? "border-destructive" : ""}
+              <Controller
+                name="correctAnswer"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    key="text-answer"
+                    id="correctAnswer"
+                    type="text"
+                    {...field}
+                    placeholder="Enter the correct answer"
+                    className={errors.correctAnswer ? "border-destructive" : ""}
+                  />
+                )}
               />
             )}
             {errors.correctAnswer && (
@@ -282,13 +292,13 @@ export default function QuestionDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+              onClick={closeDialog}
+              disabled={upsertQuestionMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : question ? "Update" : "Add"}
+            <Button type="submit" disabled={upsertQuestionMutation.isPending}>
+              {upsertQuestionMutation.isPending ? "Saving..." : question ? "Update" : "Add"}
             </Button>
           </DialogFooter>
         </form>

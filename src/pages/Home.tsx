@@ -1,70 +1,69 @@
-import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
+import { useForm } from "react-hook-form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel, FieldError } from "@/components/ui/field"
 import { useStartAttempt } from "@/hooks/useAttempt"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "sonner"
 
 export default function Home() {
-  const [quizId, setQuizId] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const startAttempt = useStartAttempt()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!quizId.trim()) return
+  const { register, handleSubmit, setError, watch, formState: { errors, isSubmitting } } = useForm<{ quizId: string }>({
+    defaultValues: { quizId: "" },
+  })
+  const quizId = watch("quizId")
 
-    setError(null)
+  const onSubmit = (data: { quizId: string }) => {
+    console.log('QUIZ ID', quizId);
     startAttempt.mutate(
-      { quizId: quizId.trim() },
+      { quizId: data.quizId.trim() },
       {
         onSuccess: (response) => {
           navigate(`/attempts/${response.attemptId}`)
         },
-        onError: (err) => {
-          setError("Quiz not found. Please check the Quiz ID and try again.")
-          console.error("Error starting attempt:", err)
+        onError: (error) => {
+          setError('quizId', { message: error.message });
         },
       }
     )
   }
 
   return (
-    <div className="w-full max-w-md rounded-lg border border-border bg-card p-8 shadow-lg">
-      <h1 className="mb-8 text-center text-3xl font-bold text-card-foreground">
-        QUIZ MAKER
-      </h1>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Field>
-          <FieldLabel htmlFor="quizId">Quiz ID</FieldLabel>
-          <Input
-            id="quizId"
-            type="text"
-            placeholder="Enter Quiz ID"
-            value={quizId}
-            onChange={(e) => {
-              setQuizId(e.target.value)
-              setError(null)
-            }}
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <CardTitle>QUIZ MAKER</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <Field>
+            <FieldLabel htmlFor="quizId">Quiz ID</FieldLabel>
+            <Input
+              id="quizId"
+              type="text"
+              placeholder="Enter Quiz ID"
+              {...register("quizId", { required: "Quiz ID is required" })}
+              className="w-full"
+            />
+            {errors.quizId && <FieldError>{errors.quizId.message}</FieldError>}
+          </Field>
+          
+          <Button
+            type="submit"
             className="w-full"
-          />
-          {error && <FieldError>{error}</FieldError>}
-        </Field>
-        
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={startAttempt.isPending || !quizId.trim()}
-        >
-          {startAttempt.isPending ? "Starting..." : "Start Quiz"}
-        </Button>
-        
-        <Link to="/quizzes/new" className="block text-center text-sm text-primary">
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Starting..." : "Start Quiz"}
+          </Button>
+        </form>
+      </CardContent>
+      <CardFooter className="justify-center">
+        <Link to="/quizzes/new" className="text-sm text-primary hover:underline">
           Create a new quiz
         </Link>
-      </form>
-    </div>
+      </CardFooter>
+    </Card>
   )
 }

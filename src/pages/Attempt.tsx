@@ -10,6 +10,7 @@ import type {
 } from "@/api/types"
 import { useLogAnswer, useSubmitAttempt } from "@/hooks/useAttempt"
 import { logAttemptEvent } from "@/api/services/attemptEvent"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Attempt() {
   const { attemptId } = useParams<{ attemptId: string }>()
@@ -168,25 +169,16 @@ export default function Attempt() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-3xl rounded-lg border border-border bg-card p-8 shadow-lg">
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/")}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
+      <Card className="w-full max-w-4xl">
+        <CardHeader className="flex-row items-start justify-between">
+          <CardTitle>{quiz.title}</CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")}> 
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back
           </Button>
-          <h1 className="text-2xl font-bold text-card-foreground">{quiz.title}</h1>
-          {quiz.description && (
-            <p className="mt-2 text-muted-foreground">{quiz.description}</p>
-          )}
-        </div>
+        </CardHeader>
 
         {isCompleted && results ? (
-          <div className="space-y-6">
+          <CardContent className="space-y-6">
             <div className="text-center py-4">
               <h3 className="text-2xl font-bold text-card-foreground mb-2">
                 Quiz Completed!
@@ -250,9 +242,9 @@ export default function Attempt() {
             <div className="flex justify-end pt-4">
               <Button onClick={() => navigate("/")}>Back to Home</Button>
             </div>
-          </div>
+          </CardContent>
         ) : (
-          <div className="space-y-6">
+          <CardContent className="space-y-6">
             {/* Progress indicator */}
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
@@ -348,9 +340,9 @@ export default function Attempt() {
                 </div>
               </div>
             )}
-          </div>
+          </CardContent>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

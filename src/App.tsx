@@ -6,6 +6,7 @@ import CreateQuiz from "./pages/CreateQuiz"
 import QuizDetail from "./pages/QuizDetail"
 import Attempt from "./pages/Attempt"
 import ThemeToggle from "./components/ThemeToggle"
+import { Toaster } from "./components/ui/sonner"
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
             <Route path="/quizzes/:quizId" element={<QuizDetail />} />
             <Route path="/attempts/:attemptId" element={<Attempt />} />
           </Routes>
+          <Toaster />
         </div>
       </BrowserRouter>
     </QueryClientProvider>
