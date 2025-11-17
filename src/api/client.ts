@@ -8,7 +8,7 @@ export const apiClient = axios.create({
   },
 });
 
-// Simulate network latency globally (1s) for all responses (success and error)
+// Simulate network latency globally (1s) for all responses (success and error) just to show loading states
 apiClient.interceptors.response.use(
   async (response) => {
     await new Promise((resolve) => setTimeout(resolve, 1000))

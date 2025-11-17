@@ -16,7 +16,7 @@ export const attemptService = {
     return result.data;
   },
   recordEvent: async (attemptId: number, event: AntiCheatEventType) => {
-    const result = await apiClient.post<ApiResult>(`/attempts/${attemptId}/events`, event);
+    const result = await apiClient.post<ApiResult>(`/attempts/${attemptId}/events`, {event});
     return result.data;
   },
 }

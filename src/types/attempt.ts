@@ -1,4 +1,4 @@
-import type { Quiz } from "./quiz";
+import type { QuizWithoutAnswers } from "./quiz";
 
 export const AntiCheatEventEnum = {
   Blur: 'blur',
@@ -10,7 +10,7 @@ export type AntiCheatEventType = typeof AntiCheatEventEnum[keyof typeof AntiChea
 export interface Attempt {
   id: number;
   quizId: number;
-  quiz: Quiz;
+  quiz: QuizWithoutAnswers;
 }
 
 export interface AttemptResult {

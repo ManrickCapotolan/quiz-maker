@@ -8,31 +8,27 @@ import { attemptService } from "@/api/services/attempt"
 import type { AxiosError } from "axios"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ErrorResponse } from "@/types/api"
-import AttemptDialog from "@/components/AttemptDialog"
-import type { QuizWithoutAnswers } from "@/api/types"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import QuestionnaireDialog from "@/components/questionnaire/QuestionnaireDialog"
+import type { Attempt } from "@/types/attempt"
 
 export default function Home() {
-  const { control, handleSubmit, setError, formState: { errors } } = useForm<{ quizId: string }>({
+  const form = useForm<{ quizId: string }>({
     defaultValues: { quizId: "" },
   })
 
   const [attemptOpen, setAttemptOpen] = useState(false)
-  const [attemptId, setAttemptId] = useState<number | null>(null)
-  const [attemptQuiz, setAttemptQuiz] = useState<QuizWithoutAnswers | null>(null)
+  const [attempt, setAttempt] = useState<Attempt | null>(null)
 
   const startAttemptMutation = useMutation({
     mutationFn: async (quizId: string) => await attemptService.startAttempt(Number(quizId)),
     onSuccess: (response) => {
-      const id = (response as any).id
-      const quiz = ((response as any).quiz) as QuizWithoutAnswers
-      setAttemptId(Number(id))
-      setAttemptQuiz(quiz)
+      setAttempt(response)
       setAttemptOpen(true)
     },
     onError: (error: AxiosError<ErrorResponse>) => {
-      setError('quizId', { message: error.response?.data?.error || "Something went wrong" })
+      form.setError('quizId', { message: error.response?.data?.error || "Something went wrong" })
     },
   })
 
@@ -47,22 +43,21 @@ export default function Home() {
       </CardHeader>
 
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Controller
             name="quizId"
-            control={control}
+            control={form.control}
             rules={{ required: "Quiz ID is required" }}
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <Field>
                 <FieldLabel htmlFor="quizId">Quiz ID</FieldLabel>
                 <Input
+                  {...field}
                   id="quizId"
                   type="number"
                   placeholder="Enter Quiz ID"
-                  className="w-full"
-                  {...field}
                 />
-                {errors.quizId && <FieldError>{errors.quizId.message}</FieldError>}
+                {fieldState.error && <FieldError>{fieldState.error.message}</FieldError>}
               </Field>
             )}
           />
@@ -83,20 +78,17 @@ export default function Home() {
         </Link>
       </CardFooter>
 
-      {attemptOpen && attemptId !== null && attemptQuiz && (
+      {attemptOpen && attempt && (
         <Dialog open={attemptOpen} onOpenChange={setAttemptOpen}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{attemptQuiz.title}</DialogTitle>
-              {attemptQuiz.description && (
-                <DialogDescription>{attemptQuiz.description}</DialogDescription>
+              <DialogTitle>{attempt.quiz.title}</DialogTitle>
+              {attempt.quiz.description && (
+                <DialogDescription>{attempt.quiz.description}</DialogDescription>
               )}
             </DialogHeader>
 
-            <AttemptDialog
-              attemptId={attemptId}
-              quiz={attemptQuiz}
-            />
+            <QuestionnaireDialog attempt={attempt}/>
           </DialogContent>
         </Dialog>
       )}
