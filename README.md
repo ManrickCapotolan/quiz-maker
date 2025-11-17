@@ -39,7 +39,7 @@ src/
 ├── components/
 │   ├── questionnaire/  # In-attempt flow (dialog, question renderer, summary)
 │   ├── quizBuilder/    # Quiz-creation experience: quiz-details, question-creation
-│   └── ui/             # shadcn/ui primitives (buttons, cards, fields, etc.)
+│   └── ui/             # shadcn/ui primitives (buttons, cards, etc.) Everything here is generated.
 ├── hooks/          # Reusable hooks (e.g., anti-cheat detector)
 ├── lib/            # Helpers like React Query cache keys and shared utils
 ├── pages/          # Route-level screens (home, create quiz, detail)

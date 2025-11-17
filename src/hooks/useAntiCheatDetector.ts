@@ -43,7 +43,7 @@ export function useAntiCheatDetector({
     return () => {
       window.removeEventListener("blur", handleBlur);
     };
-  }, []);
+  }, [enabled]);
 
   const logPasteEvent = () => {
     incrementAntiCheatEvent(AntiCheatEventEnum.Paste);
