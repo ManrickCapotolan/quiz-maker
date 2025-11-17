@@ -7,7 +7,6 @@ https://drive.google.com/file/d/1kjIsuuU9A1CA3P3qJbH8G4AnvwOGo8P7/view?usp=drive
 
 - Question type `code` isn’t implemented. Quiz builder blocks you from adding it, but seeded quizzes may include it; the question renders and accepts answers, yet it will always grade as incorrect because no `correctAnswer` exists.
 - Quiz metadata (title/description/publish flag/time limit) can’t be edited after creation and time limits aren’t enforced yet.
-- User cannot publish/unpublish the quiz
 
 
 ## Getting Started
