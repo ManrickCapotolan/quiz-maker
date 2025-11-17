@@ -66,7 +66,11 @@ export default function QuestionForm({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: quizKeys.detail(quizId) });
-      toast.success(question ? "Question updated successfully" : "Question created successfully");
+      toast.success(
+        question
+          ? "Question updated successfully"
+          : "Question created successfully",
+      );
       onSubmit();
     },
     onError: (error) => {
@@ -243,8 +247,8 @@ export default function QuestionForm({
           {upsertQuestionMutation.isPending
             ? "Saving..."
             : question
-            ? "Update"
-            : "Add"}
+              ? "Update"
+              : "Add"}
         </Button>
       </div>
     </form>

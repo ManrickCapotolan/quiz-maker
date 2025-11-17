@@ -1,6 +1,4 @@
-export type ApiResult =
-  | SuccessResponse
-  | ErrorResponse;
+export type ApiResult = SuccessResponse | ErrorResponse;
 
 export interface SuccessResponse {
   ok: string;

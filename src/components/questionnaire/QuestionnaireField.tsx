@@ -1,17 +1,22 @@
-import { QuestionTypeEnum } from "@/types/question"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Input } from "../ui/input"
-import type { QuestionWithoutAnswer } from "@/types/quiz"
+import { QuestionTypeEnum } from "@/types/question";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "../ui/input";
+import type { QuestionWithoutAnswer } from "@/types/quiz";
 
 export type QuestionnaireFieldProps = {
-  question: QuestionWithoutAnswer,
-  answers: Record<string, string>
-  handleAnswerChange: (value: string) => void
-  handlePasteEvent: () => void
-}
+  question: QuestionWithoutAnswer;
+  answers: Record<string, string>;
+  handleAnswerChange: (value: string) => void;
+  handlePasteEvent: () => void;
+};
 
-export default function QuestionnaireField({ question, answers, handlePasteEvent, handleAnswerChange }: QuestionnaireFieldProps) {
+export default function QuestionnaireField({
+  question,
+  answers,
+  handlePasteEvent,
+  handleAnswerChange,
+}: QuestionnaireFieldProps) {
   const renderField = () => {
     switch (question.type) {
       case QuestionTypeEnum.MCQ:
@@ -35,7 +40,7 @@ export default function QuestionnaireField({ question, answers, handlePasteEvent
               </Field>
             ))}
           </RadioGroup>
-        )
+        );
       case QuestionTypeEnum.Short:
         return (
           <Field>
@@ -47,18 +52,16 @@ export default function QuestionnaireField({ question, answers, handlePasteEvent
               placeholder="Enter your answer"
             />
           </Field>
-        )
+        );
       default:
-        return <p>Unsupported question type</p>
+        return <p>Unsupported question type</p>;
     }
-  }
+  };
 
   return (
     <>
-      <h4 className="font-semibold mb-2">
-        {question.prompt}
-      </h4>
+      <h4 className="font-semibold mb-2">{question.prompt}</h4>
       {renderField()}
     </>
-  )
+  );
 }

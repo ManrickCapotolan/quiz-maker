@@ -1,5 +1,5 @@
-import { apiClient } from "../client"
-import type { Question, QuestionFormFields } from "../../types/question"
+import { apiClient } from "../client";
+import type { Question, QuestionFormFields } from "../../types/question";
 
 export const questionService = {
   updateQuestion: async (id: number, data: QuestionFormFields) => {
@@ -10,5 +10,4 @@ export const questionService = {
     const result = await apiClient.delete<void>(`/questions/${id}`);
     return result.data;
   },
-}
-
+};

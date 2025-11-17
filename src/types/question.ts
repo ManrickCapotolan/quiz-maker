@@ -1,9 +1,10 @@
 export const QuestionTypeEnum = {
-  MCQ: 'mcq',
-  Short: 'short',
+  MCQ: "mcq",
+  Short: "short",
 } as const;
 
-export type QuestionType = typeof QuestionTypeEnum[keyof typeof QuestionTypeEnum];
+export type QuestionType =
+  (typeof QuestionTypeEnum)[keyof typeof QuestionTypeEnum];
 
 export interface Question {
   id: number;
@@ -14,4 +15,4 @@ export interface Question {
   options?: string[];
 }
 
-export type QuestionFormFields = Omit<Question, 'id' | 'quizId'>;
+export type QuestionFormFields = Omit<Question, "id" | "quizId">;

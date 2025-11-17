@@ -17,7 +17,7 @@ export type QuestionPreviewProps = {
   question: Question;
   index: number;
   onEdit: (question: Question) => void;
-}
+};
 
 export default function QuestionPreview({
   question,
@@ -27,7 +27,9 @@ export default function QuestionPreview({
   const queryClient = useQueryClient();
 
   const isMCQ = question.type === QuestionTypeEnum.MCQ;
-  const correctAnswer = isMCQ ? question.options![parseInt(question.correctAnswer, 10)] : question.correctAnswer;
+  const correctAnswer = isMCQ
+    ? question.options![parseInt(question.correctAnswer, 10)]
+    : question.correctAnswer;
 
   const deleteQuestionMutation = useMutation({
     mutationFn: async () => await questionService.deleteQuestion(question.id),
@@ -72,7 +74,7 @@ export default function QuestionPreview({
           </Button>
         </ItemActions>
       </ItemHeader>
-      
+
       <ItemContent className="flex flex-col gap-2">
         {isMCQ && (
           <div className="text-sm text-muted-foreground">
