@@ -1,3 +1,5 @@
+// NOTE: Generated via shadcn/ui CLI, not written manually.
+
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 

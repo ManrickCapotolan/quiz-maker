@@ -70,7 +70,7 @@ export default function QuizDetail() {
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div>
-            <CardTitle>{quizDetailQuery.data.title}</CardTitle>
+            <CardTitle>Quiz ID: {quizDetailQuery.data.id} - {quizDetailQuery.data.title}</CardTitle>
             {quizDetailQuery.data.description && (
               <CardDescription className="mt-2">
                 {quizDetailQuery.data.description}

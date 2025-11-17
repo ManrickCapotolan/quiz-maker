@@ -36,7 +36,7 @@ https://drive.google.com/file/d/1kjIsuuU9A1CA3P3qJbH8G4AnvwOGo8P7/view?usp=drive
 src/
 ├── api/            # Axios client + typed service wrappers for backend endpoints
 ├── components/
-│   ├── questionnaire/  # In-attempt flow (dialog, question renderer, summary)
+│   ├── questionnaire/  # Quiz-attempt flow (dialog, question renderer, summary)
 │   ├── quizBuilder/    # Quiz-creation experience: quiz-details, question-creation
 │   └── ui/             # shadcn/ui primitives (buttons, cards, etc.) Everything here is generated.
 ├── hooks/          # Reusable hooks (e.g., anti-cheat detector)
@@ -73,8 +73,12 @@ src/
 
   I just silently log these events by calling the Record event API. no success/error feedback to the user so they won't get distracted.
 
+## Further Improvements
 
---
+1. **Page layouts** – Every screen currently owns its own spacing/header logic. With more time (or a dedicated design system) I’d add shared layout shells for consistent headers, containers, etc.
+2. **Controller abstraction** – The `Controller + Field` combo repeats across forms. On a larger codebase I’d wrap that pattern in a reusable component so validation/error wiring stays DRY. I'd follow this video: https://youtu.be/gjrXeqgxbas?si=Jv4oRJf56s_bhzOW&t=3250
+3. **Custom hooks for data fetching** – Right now queries and mutations live inside the components that use them. Once reuse becomes necessary, I’d extract them into `useQuizDetail`, `useDeleteQuestion`, etc. to keep components lean and share cache logic.
 
-Feel free to open an issue or ping me if you need more context before evaluating the project. Good luck reviewing! 
+---
 
+Feel free to open an issue or ping me if you need more context before evaluating the project. Happy reviewing! 
