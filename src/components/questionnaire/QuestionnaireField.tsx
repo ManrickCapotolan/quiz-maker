@@ -3,6 +3,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "../ui/input";
 import type { QuestionWithoutAnswer } from "@/types/quiz";
+import { Textarea } from "../ui/textarea";
 
 export type QuestionnaireFieldProps = {
   question: QuestionWithoutAnswer;
@@ -46,6 +47,17 @@ export default function QuestionnaireField({
           <Field>
             <Input
               type="text"
+              value={answers[question.id] || ""}
+              onChange={(e) => handleAnswerChange(e.target.value)}
+              onPaste={() => handlePasteEvent()}
+              placeholder="Enter your answer"
+            />
+          </Field>
+        );
+      case QuestionTypeEnum.Code:
+        return (
+          <Field>
+            <Textarea
               value={answers[question.id] || ""}
               onChange={(e) => handleAnswerChange(e.target.value)}
               onPaste={() => handlePasteEvent()}

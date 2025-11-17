@@ -22,6 +22,7 @@ export default function QuestionnaireDialog({
   const [results, setResults] = useState<AttemptResult | null>(null);
   const { antiCheatEvents, logPasteEvent } = useAntiCheatDetector({
     attemptId: attempt.id,
+    enabled: !results,
   });
 
   const logAnswer = useMutation({

@@ -5,10 +5,12 @@ import { attemptService } from "@/api/services/attempt";
 
 interface UseAntiCheatDetectorOptions {
   attemptId: number;
+  enabled: boolean;
 }
 
 export function useAntiCheatDetector({
   attemptId,
+  enabled
 }: UseAntiCheatDetectorOptions) {
   const [antiCheatEvents, incrementAntiCheatEvent] = useReducer(
     (state, key: AntiCheatEventType) => {
@@ -29,6 +31,8 @@ export function useAntiCheatDetector({
   });
 
   useEffect(() => {
+    if (!enabled) return;
+
     const handleBlur = () => {
       incrementAntiCheatEvent(AntiCheatEventEnum.Blur);
       recordEventMutation.mutate(AntiCheatEventEnum.Blur);

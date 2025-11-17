@@ -41,8 +41,8 @@ export default function QuestionForm({
     defaultValues: {
       prompt: question?.prompt || "",
       type: question?.type || QuestionTypeEnum.MCQ,
-      options: question?.options || ["", ""],
-      correctAnswer: question?.correctAnswer || "0",
+      options: !question ? ["", ""] : (question.options?.length ? question.options : []),
+      correctAnswer: question?.correctAnswer || "",
     },
   });
 
@@ -197,12 +197,14 @@ export default function QuestionForm({
         name="correctAnswer"
         control={form.control}
         render={({ field, fieldState }) => {
+
           return (
-            <>
+            <Field>
+              <FieldLabel htmlFor="correctAnswer">Correct Answer</FieldLabel>
               {isMCQ ? (
                 <Select
                   name={field.name}
-                  value={field.value}
+                  value={String(field.value)}
                   onValueChange={field.onChange}
                 >
                   <SelectTrigger id="correctAnswer">
@@ -211,7 +213,7 @@ export default function QuestionForm({
                   <SelectContent position="item-aligned">
                     {options.map((option, optIndex) => (
                       <SelectItem key={optIndex} value={String(optIndex)}>
-                        {option.trim() || `Option ${optIndex + 1}`}
+                        {option.trim()}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -229,7 +231,7 @@ export default function QuestionForm({
               {fieldState.error && (
                 <FieldError>{fieldState.error.message}</FieldError>
               )}
-            </>
+            </Field>
           );
         }}
       />

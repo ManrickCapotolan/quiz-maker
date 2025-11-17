@@ -1,73 +1,81 @@
-# React + TypeScript + Vite
+## Quiz Maker – Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Please find the screen recording here: 
+https://drive.google.com/file/d/1kjIsuuU9A1CA3P3qJbH8G4AnvwOGo8P7/view?usp=drive_link
 
-Currently, two official plugins are available:
+## Known Issues / Limitations
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Question type `code` isn’t implemented. Quiz builder blocks you from adding it, but seeded quizzes may include it; the question renders and accepts answers, yet it will always grade as incorrect because no `correctAnswer` exists.
+- Quiz metadata (title/description/publish flag/time limit) can’t be edited after creation and time limits aren’t enforced yet.
+- User cannot publish/unpublish the quiz
 
-## React Compiler
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting Started
 
-## Expanding the ESLint configuration
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+2. **Configure environment variables**  
+   Create a `.env` file (or use the existing one) with:
+   ```
+   VITE_BASE_API_URL=<backend REST base>
+   VITE_BASE_API_TOKEN=<bearer token issued by backend>
+   ```
+3. **Run the app locally**
+   ```bash
+   npm run dev
+   ```
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+> The backend must be running and accessible from your browser for the UI to function.
 
-```js
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Folder Structure
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```
+src/
+├── api/            # Axios client + typed service wrappers for backend endpoints
+├── components/
+│   ├── questionnaire/  # In-attempt flow (dialog, question renderer, summary)
+│   ├── quizBuilder/    # Quiz-creation experience: quiz-details, question-creation
+│   └── ui/             # shadcn/ui primitives (buttons, cards, fields, etc.)
+├── hooks/          # Reusable hooks (e.g., anti-cheat detector)
+├── lib/            # Helpers like React Query cache keys and shared utils
+├── pages/          # Route-level screens (home, create quiz, detail)
+├── schemas/        # Zod schemas shared between forms & services
+├── types/          # TS interfaces/enums shared across the app
+└── main.tsx        # App bootstrap (router + React Query provider)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
+## Key Dependencies
 
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
-```
+- **@tanstack/react-query** – Query/mutation layer with caching, background refresh, and request dedupe.
+- **react-hook-form + zod** – Declarative form handling with schema-level validation and useful error messages.
+- **shadcn/ui + Radix primitives** – Accessible UI components with design tokens that match the interview project.
+
+---
+
+## Technical Decisions
+
+- **React Hook Form + Zod**  
+  I chose this pair as they integrate well together. Zod makes it easy to apply validations and RHF allows me to manage form state smoothly. Plus, RHF integrates well with a lot of ui libraries and react-query!
+
+- **shadcn/ui primitives**  
+  Shadcn is the “new kid” I’ve been wanting to try. This project felt like a good excuse to use the component generator and keep the Tailwind classes maintainable. In this project, I focused more on the functionality so excuese the large amount of tailwind classes :)
+
+- **anti-cheat implementation**
+  I went to the simplest approach:
+  
+  - Used onPaste property of the inputs for paste events. 
+  - Listened to window.onblur event for focus out events. 
+
+  I just silently log these events by calling the Record event API. no success/error feedback to the user so they won't get distracted.
+
+
+--
+
+Feel free to open an issue or ping me if you need more context before evaluating the project. Good luck reviewing! 
+

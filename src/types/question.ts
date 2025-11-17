@@ -1,6 +1,7 @@
 export const QuestionTypeEnum = {
   MCQ: "mcq",
   Short: "short",
+  Code: "code"
 } as const;
 
 export type QuestionType =
